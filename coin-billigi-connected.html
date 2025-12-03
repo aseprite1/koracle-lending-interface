@@ -189,12 +189,15 @@
         // Giwa Chain Config
         const GIWA_CHAIN = {
             id: 91342,
-            name: 'Giwa Sepolia',
+            name: 'GIWA Sepolia',
             network: 'giwa-sepolia',
             nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
             rpcUrls: {
-                default: { http: ['https://giwa-sepolia.horizenlabs.io/ethv1'] },
-                public: { http: ['https://giwa-sepolia.horizenlabs.io/ethv1'] },
+                default: { http: ['https://sepolia-rpc.giwa.io'] },
+                public: { http: ['https://sepolia-rpc.giwa.io'] },
+            },
+            blockExplorers: {
+                default: { name: 'GIWA Explorer', url: 'https://sepolia-explorer.giwa.io' },
             },
         };
 
@@ -350,6 +353,7 @@
                                     chainName: GIWA_CHAIN.name,
                                     nativeCurrency: GIWA_CHAIN.nativeCurrency,
                                     rpcUrls: [GIWA_CHAIN.rpcUrls.default.http[0]],
+                                    blockExplorerUrls: [GIWA_CHAIN.blockExplorers.default.url],
                                 }],
                             });
                         } else {
