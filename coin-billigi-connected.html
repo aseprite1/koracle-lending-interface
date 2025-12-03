@@ -15,8 +15,8 @@
     <!-- Viem from CDN -->
     <script type="module">
         import { createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits } from 'https://esm.sh/viem@2.21.54';
-        import { giwaTestnet } from 'https://esm.sh/viem@2.21.54/chains';
-        window.viem = { createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits, giwaTestnet };
+        window.viemLoaded = { createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits };
+        window.dispatchEvent(new Event('viemReady'));
     </script>
 
     <script>
@@ -231,10 +231,11 @@
         };
 
         // Utils
+        let viem = null;
         const utils = {
             fmt: (n) => new Intl.NumberFormat('en-US').format(n),
             shortAddr: (a) => a.slice(0,6) + '...' + a.slice(-4),
-            formatEther: (wei) => Number(window.viem.formatUnits(wei, 18)).toFixed(4),
+            formatEther: (wei) => Number(viem.formatUnits(wei, 18)).toFixed(4),
         };
 
         // Application Logic
@@ -242,10 +243,16 @@
             init: async () => {
                 console.log('Initializing Koracle Lending Interface...');
 
+                // Wait for viem to load
+                if (!window.viemLoaded) {
+                    await new Promise(resolve => window.addEventListener('viemReady', resolve));
+                }
+                viem = window.viemLoaded;
+
                 // Create public client
-                state.publicClient = window.viem.createPublicClient({
+                state.publicClient = viem.createPublicClient({
                     chain: GIWA_CHAIN,
-                    transport: window.viem.http()
+                    transport: viem.http()
                 });
 
                 // Load initial data
@@ -281,8 +288,8 @@
                         functionName: 'kimchiPremium',
                     });
 
-                    state.market.ethPrice = Number(window.viem.formatUnits(ethPrice, 18));
-                    state.market.kimchi = Number(window.viem.formatUnits(kimchi, 18)) * 100;
+                    state.market.ethPrice = Number(viem.formatUnits(ethPrice, 18));
+                    state.market.kimchi = Number(viem.formatUnits(kimchi, 18)) * 100;
 
                     // Calculate TVL (totalSupply * ethPrice in KRW)
                     const tvlKrw = Number(utils.formatEther(state.market.totalSupply)) * (1 / state.market.ethPrice) * 4566000;
@@ -323,11 +330,15 @@
                     // Request accounts
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
 
+                    if (!accounts || accounts.length === 0) {
+                        throw new Error('No accounts found. Please unlock MetaMask.');
+                    }
+
                     // Check/switch to Giwa Chain
                     try {
                         await window.ethereum.request({
                             method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x' + GIWA_CHAIN.id.toString(16) }],
+                            params: [{ chainId: '0x164de' }],
                         });
                     } catch (switchError) {
                         // Chain not added, add it
@@ -335,7 +346,7 @@
                             await window.ethereum.request({
                                 method: 'wallet_addEthereumChain',
                                 params: [{
-                                    chainId: '0x' + GIWA_CHAIN.id.toString(16),
+                                    chainId: '0x164de',
                                     chainName: GIWA_CHAIN.name,
                                     nativeCurrency: GIWA_CHAIN.nativeCurrency,
                                     rpcUrls: [GIWA_CHAIN.rpcUrls.default.http[0]],
@@ -347,10 +358,10 @@
                     }
 
                     // Create wallet client
-                    state.walletClient = window.viem.createWalletClient({
+                    state.walletClient = viem.createWalletClient({
                         account: accounts[0],
                         chain: GIWA_CHAIN,
-                        transport: window.viem.custom(window.ethereum)
+                        transport: viem.custom(window.ethereum)
                     });
 
                     state.wallet.connected = true;
@@ -482,7 +493,7 @@
                     btn.disabled = true;
                     btn.classList.add('animate-pulse');
 
-                    const assets = window.viem.parseUnits(amount, 18);
+                    const assets = viem.parseUnits(amount, 18);
 
                     if (mode === 'supply') {
                         // Approve
