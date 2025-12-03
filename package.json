@@ -12,13 +12,23 @@
     "example:liquidate": "tsx examples/liquidate.ts",
     "example:stats": "tsx examples/stats.ts"
   },
-  "keywords": ["morpho", "lending", "defi", "giwa-chain", "kimchi-premium"],
+  "keywords": [
+    "morpho",
+    "lending",
+    "defi",
+    "giwa-chain",
+    "kimchi-premium"
+  ],
   "author": "KORACLE",
   "license": "MIT",
   "dependencies": {
+    "@reown/appkit": "^1.8.14",
+    "@reown/appkit-adapter-wagmi": "^1.8.14",
+    "@tanstack/react-query": "^5.90.11",
     "@types/node": "^24.10.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "viem": "^2.41.2"
+    "viem": "^2.41.2",
+    "wagmi": "^3.0.2"
   }
 }
