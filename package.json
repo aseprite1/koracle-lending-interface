@@ -1,0 +1,23 @@
+{
+  "name": "lending-interface",
+  "version": "1.0.0",
+  "description": "Interface library for CustomMorpho lending protocol on Giwa Chain",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "example:supply": "tsx examples/supply.ts",
+    "example:borrow": "tsx examples/borrow.ts",
+    "example:liquidate": "tsx examples/liquidate.ts",
+    "example:stats": "tsx examples/stats.ts"
+  },
+  "keywords": ["morpho", "lending", "defi", "giwa-chain", "kimchi-premium"],
+  "author": "KORACLE",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "viem": "^2.41.2"
+  }
+}
