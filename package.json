@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "dev": "python3 -m http.server 8080",
     "example:supply": "tsx examples/supply.ts",
     "example:borrow": "tsx examples/borrow.ts",
     "example:liquidate": "tsx examples/liquidate.ts",

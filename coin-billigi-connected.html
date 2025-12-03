@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koracle Lending - Giwa Chain</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+    <!-- Viem from CDN -->
+    <script type="module">
+        import { createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits } from 'https://esm.sh/viem@2.21.54';
+        import { giwaTestnet } from 'https://esm.sh/viem@2.21.54/chains';
+        window.viem = { createPublicClient, createWalletClient, custom, http, formatUnits, parseUnits, giwaTestnet };
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        void: '#030303',
+                        panel: '#080808',
+                        border: '#1F1F1F',
+                        primary: '#E2E2E2',
+                        secondary: '#888888',
+                        accent: '#D4FF00',
+                        success: '#00FF88',
+                        warning: '#FFAA00',
+                        danger: '#FF3366',
+                    },
+                    keyframes: {
+                        enter: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' }
+                        }
+                    },
+                    animation: {
+                        enter: 'enter 0.3s ease-out'
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-void text-primary font-sans antialiased overflow-hidden">
+
+    <main class="h-screen flex">
+        <!-- Left Panel: Protocol Dashboard -->
+        <section class="w-3/5 border-r border-border p-10 overflow-y-auto">
+            <!-- Header -->
+            <header class="mb-12 pb-6 border-b border-white/5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-serif italic mb-2">Koracle Lending</h1>
+                        <p class="text-xs font-mono text-secondary uppercase tracking-wider">Giwa Chain • Kimchi Premium Liquidation</p>
+                    </div>
+                    <button id="connect-wallet" onclick="app.connectWallet()"
+                        class="px-6 py-3 bg-white text-black font-mono text-xs font-bold uppercase tracking-wider hover:bg-accent transition-colors">
+                        Connect
+                    </button>
+                </div>
+            </header>
+
+            <!-- Market Overview -->
+            <div class="grid grid-cols-3 gap-6 mb-12">
+                <div class="bg-panel p-6 border border-white/5">
+                    <p class="text-[10px] font-mono text-secondary uppercase mb-2">TVL (KRW)</p>
+                    <p class="text-2xl font-mono text-white" id="tvl">Loading...</p>
+                </div>
+                <div class="bg-panel p-6 border border-white/5">
+                    <p class="text-[10px] font-mono text-secondary uppercase mb-2">ETH Price (KRW)</p>
+                    <p class="text-2xl font-mono text-white" id="eth-price">Loading...</p>
+                </div>
+                <div class="bg-panel p-6 border border-white/5">
+                    <p class="text-[10px] font-mono text-secondary uppercase mb-2">Kimchi Premium</p>
+                    <p class="text-2xl font-mono text-accent" id="kimchi">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Market List -->
+            <div class="space-y-4">
+                <h2 class="font-mono text-xs uppercase text-secondary mb-6">Active Markets</h2>
+
+                <!-- UPETH Supply Market -->
+                <div onclick="app.selectMarket('supply')"
+                    class="bg-panel border border-white/5 p-6 hover:border-accent/50 cursor-pointer transition-all group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-blue-500 rounded-full"></div>
+                            <div>
+                                <h3 class="font-mono text-lg">UPETH</h3>
+                                <p class="text-[10px] text-secondary uppercase">Supply Market</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-mono text-success" id="supply-apy">-.-%</p>
+                            <p class="text-[10px] text-secondary uppercase">APY</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Total Supply</p>
+                            <p class="font-mono" id="total-supply">--</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Your Supply</p>
+                            <p class="font-mono" id="your-supply">--</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Available</p>
+                            <p class="font-mono" id="available-supply">--</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UPKRW/UPETH Borrow Market -->
+                <div onclick="app.selectMarket('borrow')"
+                    class="bg-panel border border-white/5 p-6 hover:border-accent/50 cursor-pointer transition-all group">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-red-500 rounded-full"></div>
+                            <div>
+                                <h3 class="font-mono text-lg">UPETH</h3>
+                                <p class="text-[10px] text-secondary uppercase">Borrow Market (UPKRW Collateral)</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-mono text-danger" id="borrow-apy">-.-%</p>
+                            <p class="text-[10px] text-secondary uppercase">APY</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Total Borrow</p>
+                            <p class="font-mono" id="total-borrow">--</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Your Borrow</p>
+                            <p class="font-mono" id="your-borrow">--</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-secondary uppercase mb-1">Max LTV</p>
+                            <p class="font-mono">92%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Transaction Panel -->
+        <aside class="w-2/5 bg-panel p-10 flex flex-col">
+            <div id="panel-content" class="h-full flex flex-col">
+                <!-- Idle State -->
+                <div class="h-full flex flex-col items-center justify-center text-center opacity-30 space-y-6">
+                    <div class="w-16 h-16 border border-dashed border-white rounded-full flex items-center justify-center">
+                        <span class="material-symbols-outlined text-3xl font-light">data_exploration</span>
+                    </div>
+                    <p class="font-mono text-xs max-w-[200px] leading-relaxed">Select a market to begin transaction</p>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script type="module">
+        // Contract Addresses
+        const ADDRESSES = {
+            MORPHO: "0xf31D0A92Ab90096a5d895666B5dEDA3639d185B2",
+            UPETH: "0xc05bAe1723bd929306B0ab8125062Efc111fb338",
+            UPKRW: "0x159C54accF62C14C117474B67D2E3De8215F5A72",
+            ORACLE: "0x258d90F00eEd27c69514A934379Aa41Cc03ea875",
+            IRM: "0xA99676204e008B511dA8662F9bE99e2bfA5afd63",
+        };
+
+        const MARKET_ID = "0x5fdc9fa54b964034b39b1b36ec4b8b009bbf1448cdc951cbb05f647c42d9149f";
+        const LLTV = 920000000000000000n;
+
+        // Giwa Chain Config
+        const GIWA_CHAIN = {
+            id: 91342,
+            name: 'Giwa Sepolia',
+            network: 'giwa-sepolia',
+            nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+            rpcUrls: {
+                default: { http: ['https://giwa-sepolia.horizenlabs.io/ethv1'] },
+                public: { http: ['https://giwa-sepolia.horizenlabs.io/ethv1'] },
+            },
+        };
+
+        // ABIs
+        const erc20Abi = [
+            { inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], name: 'approve', outputs: [{ type: 'bool' }], stateMutability: 'nonpayable', type: 'function' },
+            { inputs: [{ name: 'account', type: 'address' }], name: 'balanceOf', outputs: [{ type: 'uint256' }], stateMutability: 'view', type: 'function' },
+        ];
+
+        const morphoAbi = [
+            { inputs: [{ components: [{ name: 'loanToken', type: 'address' }, { name: 'collateralToken', type: 'address' }, { name: 'oracle', type: 'address' }, { name: 'irm', type: 'address' }, { name: 'lltv', type: 'uint256' }], name: 'marketParams', type: 'tuple' }, { name: 'assets', type: 'uint256' }, { name: 'shares', type: 'uint256' }, { name: 'onBehalf', type: 'address' }, { name: 'data', type: 'bytes' }], name: 'supply', outputs: [{ type: 'uint256' }, { type: 'uint256' }], stateMutability: 'nonpayable', type: 'function' },
+            { inputs: [{ components: [{ name: 'loanToken', type: 'address' }, { name: 'collateralToken', type: 'address' }, { name: 'oracle', type: 'address' }, { name: 'irm', type: 'address' }, { name: 'lltv', type: 'uint256' }], name: 'marketParams', type: 'tuple' }], name: 'market', outputs: [{ type: 'uint128' }, { type: 'uint128' }, { type: 'uint128' }, { type: 'uint128' }, { type: 'uint128' }, { type: 'uint128' }], stateMutability: 'view', type: 'function' },
+        ];
+
+        const oracleAbi = [
+            { inputs: [], name: 'price', outputs: [{ type: 'uint256' }], stateMutability: 'view', type: 'function' },
+            { inputs: [], name: 'kimchiPremium', outputs: [{ type: 'uint256' }], stateMutability: 'view', type: 'function' },
+        ];
+
+        const marketParams = {
+            loanToken: ADDRESSES.UPETH,
+            collateralToken: ADDRESSES.UPKRW,
+            oracle: ADDRESSES.ORACLE,
+            irm: ADDRESSES.IRM,
+            lltv: LLTV,
+        };
+
+        // State
+        const state = {
+            wallet: { connected: false, address: null, balance: { UPETH: 0n, UPKRW: 0n } },
+            market: { ethPrice: 0, kimchi: 0, totalSupply: 0n, totalBorrow: 0n },
+            publicClient: null,
+            walletClient: null,
+        };
+
+        // Utils
+        const utils = {
+            fmt: (n) => new Intl.NumberFormat('en-US').format(n),
+            shortAddr: (a) => a.slice(0,6) + '...' + a.slice(-4),
+            formatEther: (wei) => Number(window.viem.formatUnits(wei, 18)).toFixed(4),
+        };
+
+        // Application Logic
+        const app = {
+            init: async () => {
+                console.log('Initializing Koracle Lending Interface...');
+
+                // Create public client
+                state.publicClient = window.viem.createPublicClient({
+                    chain: GIWA_CHAIN,
+                    transport: window.viem.http()
+                });
+
+                // Load initial data
+                await app.refresh();
+
+                // Auto-refresh every 10s
+                setInterval(app.refresh, 10000);
+            },
+
+            refresh: async () => {
+                try {
+                    // Get market data
+                    const marketData = await state.publicClient.readContract({
+                        address: ADDRESSES.MORPHO,
+                        abi: morphoAbi,
+                        functionName: 'market',
+                        args: [marketParams]
+                    });
+
+                    state.market.totalSupply = marketData[0];
+                    state.market.totalBorrow = marketData[2];
+
+                    // Get oracle data
+                    const ethPrice = await state.publicClient.readContract({
+                        address: ADDRESSES.ORACLE,
+                        abi: oracleAbi,
+                        functionName: 'price',
+                    });
+
+                    const kimchi = await state.publicClient.readContract({
+                        address: ADDRESSES.ORACLE,
+                        abi: oracleAbi,
+                        functionName: 'kimchiPremium',
+                    });
+
+                    state.market.ethPrice = Number(window.viem.formatUnits(ethPrice, 18));
+                    state.market.kimchi = Number(window.viem.formatUnits(kimchi, 18)) * 100;
+
+                    // Calculate TVL (totalSupply * ethPrice in KRW)
+                    const tvlKrw = Number(utils.formatEther(state.market.totalSupply)) * (1 / state.market.ethPrice) * 4566000;
+
+                    // Update UI
+                    document.getElementById('tvl').textContent = utils.fmt(Math.round(tvlKrw));
+                    document.getElementById('eth-price').textContent = utils.fmt(Math.round(1 / state.market.ethPrice * 4566000));
+                    document.getElementById('kimchi').textContent = state.market.kimchi.toFixed(2) + '%';
+
+                    document.getElementById('total-supply').textContent = utils.formatEther(state.market.totalSupply) + ' UPETH';
+                    document.getElementById('total-borrow').textContent = utils.formatEther(state.market.totalBorrow) + ' UPETH';
+
+                    // Calculate APY (mock for now - utilization based)
+                    const utilization = state.market.totalSupply > 0n
+                        ? Number(state.market.totalBorrow) / Number(state.market.totalSupply) * 100
+                        : 0;
+
+                    document.getElementById('supply-apy').textContent = (utilization * 0.8).toFixed(2) + '%';
+                    document.getElementById('borrow-apy').textContent = utilization.toFixed(2) + '%';
+
+                    // Update wallet balances if connected
+                    if (state.wallet.connected) {
+                        await app.updateBalances();
+                    }
+
+                } catch (error) {
+                    console.error('Refresh failed:', error);
+                }
+            },
+
+            connectWallet: async () => {
+                try {
+                    if (!window.ethereum) {
+                        alert('Please install MetaMask!');
+                        return;
+                    }
+
+                    // Request accounts
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                    // Check/switch to Giwa Chain
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: '0x' + GIWA_CHAIN.id.toString(16) }],
+                        });
+                    } catch (switchError) {
+                        // Chain not added, add it
+                        if (switchError.code === 4902) {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [{
+                                    chainId: '0x' + GIWA_CHAIN.id.toString(16),
+                                    chainName: GIWA_CHAIN.name,
+                                    nativeCurrency: GIWA_CHAIN.nativeCurrency,
+                                    rpcUrls: [GIWA_CHAIN.rpcUrls.default.http[0]],
+                                }],
+                            });
+                        } else {
+                            throw switchError;
+                        }
+                    }
+
+                    // Create wallet client
+                    state.walletClient = window.viem.createWalletClient({
+                        account: accounts[0],
+                        chain: GIWA_CHAIN,
+                        transport: window.viem.custom(window.ethereum)
+                    });
+
+                    state.wallet.connected = true;
+                    state.wallet.address = accounts[0];
+
+                    // Update UI
+                    document.getElementById('connect-wallet').textContent = utils.shortAddr(accounts[0]);
+                    document.getElementById('connect-wallet').disabled = true;
+
+                    await app.updateBalances();
+
+                    console.log('Wallet connected:', accounts[0]);
+                } catch (error) {
+                    console.error('Connection failed:', error);
+                    alert('Failed to connect wallet: ' + error.message);
+                }
+            },
+
+            updateBalances: async () => {
+                try {
+                    const upethBalance = await state.publicClient.readContract({
+                        address: ADDRESSES.UPETH,
+                        abi: erc20Abi,
+                        functionName: 'balanceOf',
+                        args: [state.wallet.address]
+                    });
+
+                    const upkrwBalance = await state.publicClient.readContract({
+                        address: ADDRESSES.UPKRW,
+                        abi: erc20Abi,
+                        functionName: 'balanceOf',
+                        args: [state.wallet.address]
+                    });
+
+                    state.wallet.balance.UPETH = upethBalance;
+                    state.wallet.balance.UPKRW = upkrwBalance;
+
+                    document.getElementById('your-supply').textContent = '0 UPETH'; // TODO: get position
+                    document.getElementById('your-borrow').textContent = '0 UPETH'; // TODO: get position
+                    document.getElementById('available-supply').textContent = utils.formatEther(upethBalance) + ' UPETH';
+
+                } catch (error) {
+                    console.error('Balance update failed:', error);
+                }
+            },
+
+            selectMarket: (mode) => {
+                const panel = document.getElementById('panel-content');
+                const isSupply = mode === 'supply';
+                const asset = isSupply ? 'UPETH' : 'UPETH';
+                const walletBalance = isSupply
+                    ? utils.formatEther(state.wallet.balance.UPETH)
+                    : utils.formatEther(state.wallet.balance.UPETH);
+
+                panel.innerHTML = `
+                    <div class="h-full flex flex-col animate-enter">
+                        <h2 class="text-2xl font-serif italic mb-8">${isSupply ? 'Supply' : 'Borrow'} ${asset}</h2>
+
+                        <div class="mb-6">
+                            <div class="flex justify-between font-mono text-[10px] text-secondary mb-2 uppercase">
+                                <label>Amount</label>
+                                <span>Wallet: ${state.wallet.connected ? walletBalance : '0.00'}</span>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="input-amt"
+                                    class="w-full bg-transparent border-b border-white/20 py-4 text-4xl font-mono text-white focus:outline-none focus:border-accent transition-colors placeholder-white/10"
+                                    placeholder="0.00">
+                                <button onclick="app.setMax('${mode}')" class="absolute right-0 top-1/2 -translate-y-1/2 text-[10px] font-bold bg-white/10 hover:bg-white/20 text-white px-2 py-1 uppercase transition-colors">MAX</button>
+                            </div>
+                        </div>
+
+                        ${!isSupply ? `
+                        <div class="relative group mb-8 animate-enter">
+                            <label class="block font-mono text-[10px] text-secondary mb-2 uppercase">Collateral (UPKRW)</label>
+                            <input type="number" id="input-col"
+                                class="w-full bg-transparent border-b border-white/20 py-2 text-xl font-mono text-white focus:outline-none placeholder-white/10"
+                                placeholder="0">
+                        </div>
+                        ` : ''}
+
+                        <div class="space-y-4 mb-auto bg-white/[0.02] p-4 border border-white/5">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-secondary font-mono text-xs uppercase">Strategy</span>
+                                <span class="font-mono text-accent">Utilization-Based</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-secondary font-mono text-xs uppercase">Current APY</span>
+                                <span class="font-mono text-white" id="current-apy">-.-%</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 space-y-3">
+                            <button onclick="app.execute('${mode}')" class="w-full py-5 bg-white text-black font-bold font-mono uppercase tracking-widest hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm" ${!state.wallet.connected ? 'disabled' : ''}>
+                                ${state.wallet.connected ? (isSupply ? 'Confirm Supply' : 'Confirm Borrow') : 'Connect Wallet'}
+                            </button>
+                            ${!isSupply ? '<p class="text-[10px] text-center text-secondary mt-2 font-mono">Max LTV 92% • Kimchi Premium Liquidation Active</p>' : ''}
+                        </div>
+                    </div>
+                `;
+
+                // Update APY in panel
+                const currentApy = isSupply
+                    ? document.getElementById('supply-apy').textContent
+                    : document.getElementById('borrow-apy').textContent;
+                document.getElementById('current-apy').textContent = currentApy;
+            },
+
+            setMax: (mode) => {
+                const input = document.getElementById('input-amt');
+                if (mode === 'supply') {
+                    input.value = utils.formatEther(state.wallet.balance.UPETH);
+                } else {
+                    input.value = utils.formatEther(state.wallet.balance.UPETH);
+                }
+            },
+
+            execute: async (mode) => {
+                const btn = document.querySelector('button[onclick^="app.execute"]');
+                const original = btn.textContent;
+
+                try {
+                    const amount = document.getElementById('input-amt').value;
+                    if (!amount || amount === '0') {
+                        alert('Please enter an amount');
+                        return;
+                    }
+
+                    btn.textContent = "BROADCASTING...";
+                    btn.disabled = true;
+                    btn.classList.add('animate-pulse');
+
+                    const assets = window.viem.parseUnits(amount, 18);
+
+                    if (mode === 'supply') {
+                        // Approve
+                        const approveHash = await state.walletClient.writeContract({
+                            address: ADDRESSES.UPETH,
+                            abi: erc20Abi,
+                            functionName: 'approve',
+                            args: [ADDRESSES.MORPHO, assets],
+                        });
+
+                        await state.publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+                        // Supply
+                        const supplyHash = await state.walletClient.writeContract({
+                            address: ADDRESSES.MORPHO,
+                            abi: morphoAbi,
+                            functionName: 'supply',
+                            args: [marketParams, assets, 0n, state.wallet.address, '0x'],
+                        });
+
+                        await state.publicClient.waitForTransactionReceipt({ hash: supplyHash });
+
+                        btn.classList.remove('animate-pulse');
+                        btn.textContent = "CONFIRMED";
+                        btn.classList.add('bg-accent');
+
+                        setTimeout(() => {
+                            btn.textContent = original;
+                            btn.disabled = false;
+                            btn.classList.remove('bg-accent');
+                            document.getElementById('input-amt').value = '';
+                            app.refresh();
+                        }, 2000);
+
+                    } else {
+                        alert('Borrow functionality coming soon!');
+                        btn.textContent = original;
+                        btn.disabled = false;
+                        btn.classList.remove('animate-pulse');
+                    }
+
+                } catch (error) {
+                    console.error('Transaction failed:', error);
+                    alert('Transaction failed: ' + error.message);
+                    btn.textContent = original;
+                    btn.disabled = false;
+                    btn.classList.remove('animate-pulse');
+                }
+            }
+        };
+
+        // Initialize
+        window.app = app;
+        window.addEventListener('DOMContentLoaded', app.init);
+    </script>
+</body>
+</html>
